@@ -1,0 +1,73 @@
+{
+  "name": "dsh-feng-gu",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness 整活插件：按 DeepSeek API 峰谷定价，实时显示现在是梁文峰（高峰）还是梁文谷（低谷），带切换倒计时",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KeqingMoe/dsh-feng-gu.git"
+  },
+  "homepage": "https://github.com/KeqingMoe/dsh-feng-gu#readme",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./src/client/index.ts",
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('lib',{recursive:true,force:true})\" && tsdown",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/smoke.mjs"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "deepseek",
+    "cordis",
+    "plugin",
+    "峰谷定价",
+    "梁文峰",
+    "整活"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "react": "^18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@types/node": "^26.2.0",
+    "@types/react": "^18.3.0",
+    "react": "^18.2.0",
+    "tsdown": "^0.22.2",
+    "typescript": "^6.0.3"
+  }
+}

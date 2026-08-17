@@ -1,0 +1,9 @@
+# dsh-feng-gu bundle layer.
+#
+# Inserts the plugin row. The browser half is discovered automatically: the
+# dsh web shell's modules node half scans enabled Loader entries for web
+# `dsh.client` packages and serves their built `exports["./client"]` bundle
+# at /plugins/<id>/client.js — no web-app rebuild needed.
+- insert:
+    - id: feng-gu
+      name: dsh-feng-gu
