@@ -50,7 +50,7 @@ export function formatHms(total: number): string {
 /** Compute the peak/valley state for a wall-clock instant (epoch ms). */
 export function computeState(now: number): FengGuState {
   const d = new Date(now + BEIJING_OFFSET_MS)
-  const day = d.getDay()
+  const day = d.getUTCDay()
   const h = d.getUTCHours()
   const m = d.getUTCMinutes()
   const s = d.getUTCSeconds()
@@ -58,7 +58,7 @@ export function computeState(now: number): FengGuState {
 
   const peak = PEAK_WINDOWS.find((w) => secOfDay >= w.start && secOfDay < w.end)
   const isWeekend = day === 0 || day === 6
-  const isValley = !isWeekend && (peak === undefined) // 是工作日且在高峰时段
+  const isValley = isWeekend && (peak === undefined)  // 周末全天谷，工作日非高峰时段记为峰谷
 
   let remainingSec: number
   if (peak !== undefined) {
