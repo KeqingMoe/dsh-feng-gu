@@ -5,77 +5,138 @@
  * looks native in both light and dark themes.
  */
 export const badgeCss = `
-.fg-wrap {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 9999;
-  font-family: ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
-  pointer-events: auto;
-  user-select: none;
+.fg-anchor {
+  display: inline-flex;
+  min-width: 0;
+  font-size: calc(var(--dsh-content-font-size-secondary, 13px) - 1px);
+  line-height: calc(20px + var(--dsh-content-font-delta-secondary, 0px));
 }
-.fg-badge {
+
+.fg-anchor--hero {
+  font-size: var(--dsh-content-font-size-secondary, 13px);
+}
+
+.fg-pill {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 1px 8px;
+  border: 0;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  line-height: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.fg-pill--hero {
+  font-weight: 500;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.fg-pill:hover,
+.fg-pill[aria-expanded='true'] {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+
+.fg-pill:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.fg-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fg-panel {
+  position: fixed;
+  z-index: 1100;
+  width: min(264px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 12px;
+  border: 0;
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-specific-menu);
+  backdrop-filter: var(--dsw-menu-backdrop-filter);
+  -webkit-backdrop-filter: var(--dsw-menu-backdrop-filter);
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  box-shadow: var(--dsw-elevation-prominent);
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: default;
+}
+
+.fg-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
+  gap: 6px;
+}
+
+.fg-headline {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.fg-bar {
+  display: flex;
+  gap: 1px;
+  margin: 10px 0 12px;
+  height: 4px;
+  overflow: hidden;
   border-radius: 999px;
-  background: var(--dsw-alias-bg-overlay);
-  border: 1px solid var(--dsw-alias-border-l2);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
-  cursor: pointer;
-  color: var(--dsw-alias-label-primary);
-  font-size: 13px;
-  line-height: 1;
+  corner-shape: round;
+  background: var(--dsw-alias-interactive-bg-hover);
 }
-.fg-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
+
+.fg-segment {
+  height: 100%;
+  border-radius: 1px;
 }
-.fg-name {
-  font-weight: 700;
-  letter-spacing: 0.02em;
+
+.fg-segment--peak {
+  width: 29.17%;
+  background: var(--dsw-static-blue-450);
 }
-.fg-time {
-  color: var(--dsw-alias-label-secondary);
-  font-variant-numeric: tabular-nums;
+
+.fg-rows {
+  margin: 6px 0 0;
 }
-.fg-panel {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 10px);
-  width: 304px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--dsw-alias-bg-overlay);
-  border: 1px solid var(--dsw-alias-border-l1);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
-  color: var(--dsw-alias-label-primary);
-  font-size: 12px;
-}
-.fg-title {
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
+
 .fg-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 4px 0;
-  border-bottom: 1px dashed var(--dsw-alias-border-l1);
+  padding: 2px 0;
 }
-.fg-row:last-of-type {
-  border-bottom: none;
+
+.fg-row dt,
+.fg-row dd {
+  min-width: 0;
+  margin: 0;
 }
-.fg-row b {
-  font-variant-numeric: tabular-nums;
-}
-.fg-note {
-  margin-top: 8px;
+
+.fg-row dt {
   color: var(--dsw-alias-label-secondary);
-  line-height: 1.55;
+}
+
+.fg-row dd {
+  color: var(--dsw-alias-label-primary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.fg-status {
+  font-weight: 500;
 }
 `
