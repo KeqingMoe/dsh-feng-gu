@@ -89,7 +89,7 @@ export const badgeCss = `
 
 .fg-bar {
   display: flex;
-  gap: 1px;
+  align-items: stretch;
   margin: 10px 0 12px;
   height: 4px;
   overflow: hidden;
@@ -99,13 +99,20 @@ export const badgeCss = `
 }
 
 .fg-segment {
+  display: block;
   height: 100%;
-  border-radius: 1px;
+  min-width: 0;
+  border-radius: 999px;
+  background: var(--dsw-static-blue-450);
 }
 
-.fg-segment--peak {
-  width: 29.17%;
-  background: var(--dsw-static-blue-450);
+/* Unknown holiday calendar: no truthful percentage, show a neutral hatch instead. */
+.fg-bar--unknown {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--dsw-alias-interactive-bg-hover) 0 4px,
+    transparent 4px 8px
+  );
 }
 
 .fg-rows {
@@ -138,5 +145,9 @@ export const badgeCss = `
 
 .fg-status {
   font-weight: 500;
+}
+
+.fg-progress {
+  font-variant-numeric: tabular-nums;
 }
 `
