@@ -149,6 +149,102 @@ check('2027 年工作日结果标记日历已知', () => {
   assert.equal(st.calendarKnown, true)
 })
 
+// ---------- 当前时段进度条 ----------
+// 进度条 = (now - 时段起点) / (时段终点 - 时段起点)，与倒计时共用同一边界。
+const near = (a, b, eps = 0.001) => Math.abs(a - b) <= eps
+check('12:00 低谷刚开始，进度约 0%', () => {
+  const st = api.computeState(bj(2027, 0, 4, 12, 0, 0))
+  assert.equal(st.isValley, true)
+  assert.ok(st.periodProgress !== null)
+  assert.ok(near(st.periodProgress, 0, 0.001), 'got ' + st.periodProgress)
+})
+check('13:00 低谷进行一半，进度约 50%', () => {
+  const st = api.computeState(bj(2027, 0, 4, 13, 0, 0))
+  assert.equal(st.isValley, true)
+  assert.ok(near(st.periodProgress, 50, 0.001), 'got ' + st.periodProgress)
+})
+check('13:57:50 低谷进度约 98.2%', () => {
+  const st = api.computeState(bj(2027, 0, 4, 13, 57, 50))
+  assert.equal(st.isValley, true)
+  assert.ok(near(st.periodProgress, 98.19, 0.02), 'got ' + st.periodProgress)
+})
+check('14:00 进入高峰，新时段进度约 0%', () => {
+  const st = api.computeState(bj(2027, 0, 4, 14, 0, 0))
+  assert.equal(st.isValley, false)
+  assert.ok(near(st.periodProgress, 0, 0.001), 'got ' + st.periodProgress)
+})
+check('16:00 高峰进行一半，进度约 50%', () => {
+  const st = api.computeState(bj(2027, 0, 4, 16, 0, 0))
+  assert.equal(st.isValley, false)
+  assert.ok(near(st.periodProgress, 50, 0.001), 'got ' + st.periodProgress)
+})
+check('18:00 进入低谷，新时段进度约 0%', () => {
+  const st = api.computeState(bj(2027, 0, 4, 18, 0, 0))
+  assert.equal(st.isValley, true)
+  assert.ok(near(st.periodProgress, 0, 0.001), 'got ' + st.periodProgress)
+})
+check('上午高峰 10:00 进度约 33.3%', () => {
+  const st = api.computeState(bj(2027, 0, 4, 10, 0, 0))
+  assert.equal(st.isValley, false)
+  assert.ok(near(st.periodProgress, 100 / 3, 0.01), 'got ' + st.periodProgress)
+})
+check('进度始终夹在 0%~100%', () => {
+  for (const [h, m] of [[0, 0], [3, 30], [8, 59], [12, 30], [17, 59], [23, 59]]) {
+    const st = api.computeState(bj(2027, 0, 4, h, m, 0))
+    if (st.periodProgress === null) continue
+    assert.ok(st.periodProgress >= 0 && st.periodProgress <= 100, 'got ' + st.periodProgress)
+  }
+})
+check('时段边界与倒计时一致：periodEnd - now = remainingSec', () => {
+  for (const [h, m, s] of [[9, 0, 0], [11, 59, 59], [12, 0, 0], [13, 30, 0], [14, 0, 0], [17, 59, 59], [18, 0, 0], [23, 0, 0]]) {
+    const now = bj(2027, 0, 4, h, m, s)
+    const st = api.computeState(now)
+    assert.equal(Math.round((st.periodEnd - now) / 1000), st.remainingSec)
+  }
+})
+check('周末连续低谷：周六 10:00 起点为周五 18:00，不按午夜归零', () => {
+  const now = bj(2027, 0, 9, 10, 0, 0)
+  const st = api.computeState(now)
+  assert.equal(st.isValley, true)
+  assert.equal(st.periodStart, bj(2027, 0, 8, 18, 0, 0))
+  assert.equal(st.periodEnd, bj(2027, 0, 11, 9, 0, 0))
+  assert.ok(near(st.periodProgress, (16 / 63) * 100, 0.01), 'got ' + st.periodProgress)
+})
+check('周末连续低谷：周日 15:00 进度不按午夜重置', () => {
+  const now = bj(2027, 0, 10, 15, 0, 0)
+  const st = api.computeState(now)
+  assert.equal(st.isValley, true)
+  assert.equal(st.periodStart, bj(2027, 0, 8, 18, 0, 0))
+  assert.ok(near(st.periodProgress, (45 / 63) * 100, 0.01), 'got ' + st.periodProgress)
+})
+check('连续法定节假日：2027-02-08 低谷起点为节前 02-04 18:00', () => {
+  const now = bj(2027, 1, 8, 10, 0, 0)
+  const st = api.computeState(now)
+  assert.equal(st.isValley, true)
+  assert.equal(st.periodStart, bj(2027, 1, 4, 18, 0, 0))
+  assert.equal(st.periodEnd, bj(2027, 1, 15, 9, 0, 0))
+})
+check('节假日不误算成高峰：国庆期间进度照常推进', () => {
+  const st = api.computeState(bj(2027, 9, 4, 10, 0, 0))
+  assert.equal(st.isValley, true)
+  assert.ok(st.periodProgress !== null)
+  assert.ok(st.periodProgress > 0 && st.periodProgress < 100, 'got ' + st.periodProgress)
+})
+check('未知年份不伪造精确进度：periodProgress 为 null', () => {
+  const st = api.computeState(bj(2028, 0, 3, 10, 0, 0))
+  assert.equal(st.calendarKnown, false)
+  assert.equal(st.periodProgress, null)
+})
+check('跨年低谷（2027→2028）进度不可知', () => {
+  const st = api.computeState(bj(2027, 11, 31, 18, 0, 0))
+  assert.equal(st.calendarKnown, false)
+  assert.equal(st.periodProgress, null)
+})
+check('进度条百分比文本格式', () => {
+  assert.equal(typeof st0(), 'number')
+  function st0() { return api.computeState(bj(2027, 0, 4, 13, 57, 50)).periodProgress }
+})
+
 // ---------- 格式 ----------
 check('formatHms', () => {
   assert.equal(api.formatHms(3661), '01:01:01')

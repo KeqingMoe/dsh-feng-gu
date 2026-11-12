@@ -11,6 +11,12 @@
  *     因此不收录历史日期；2026 视为“无剩余节假日”（不猜测历史）。
  *   · 2027 年按国务院办公厅 2026-11-05 通知收录。
  *   · 其余年份标记为未知（calendarKnown=false），只按工作日规则计算，不伪造结论。
+ *
+ * 时段边界（时段进度条与倒计时共用）：
+ *   · 一次“连续时段” = 两次状态切换之间的整段区间；
+ *   · 高峰时段 = 某个高峰窗口本身；
+ *   · 低谷时段 = 上一次高峰结束 → 下一次高峰开始的整段区间，
+ *     该区间可以跨午夜、跨周末、跨连续法定节假日，期间不会按午夜重置。
  */
 
 export const BEIJING_OFFSET_MS = 8 * 3600 * 1000
@@ -22,6 +28,12 @@ export const PEAK_WINDOWS = [
   { start: 9 * 3600, end: 12 * 3600 },
   { start: 14 * 3600, end: 18 * 3600 },
 ] as const
+
+/**
+ * 日历可信起点：2026 年只从这一天起没有后续法定节假日，
+ * 因此落在该时刻之前的时段起点无法确证（此前的法定节假日未收录，不猜测）。
+ */
+export const CALENDAR_HORIZON_MS = Date.UTC(2026, 9, 8) - BEIJING_OFFSET_MS
 
 /** 中国法定节假日（北京时间日期，YYYY-MM-DD）。来源：国务院办公厅通知。 */
 const CHINA_HOLIDAYS: Readonly<Record<number, ReadonlySet<string>>> = {
@@ -57,6 +69,12 @@ export interface FengGuState {
   beijing: string
   /** Whether the holiday calendar covers the years needed for this result. */
   calendarKnown: boolean
+  /** Start of the current continuous peak/valley period (epoch ms). */
+  periodStart: number
+  /** End of the current continuous peak/valley period (epoch ms); equals the next switch. */
+  periodEnd: number
+  /** Elapsed share of the current period, 0-100; null when it cannot be determined. */
+  periodProgress: number | null
 }
 
 const pad = (n: number): string => String(n).padStart(2, '0')
@@ -109,49 +127,93 @@ function beijingSecondsOfDay(ms: number): number {
   return d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds()
 }
 
+/** Epoch ms of Beijing midnight of the day containing `ms`. */
+function beijingDayStartMs(ms: number): number {
+  const shifted = ms + BEIJING_OFFSET_MS
+  return Math.floor(shifted / DAY_MS) * DAY_MS - BEIJING_OFFSET_MS
+}
+
+/** Whether every year touched by [startMs, endMs] has published holiday data. */
+function calendarKnownForRange(startMs: number, endMs: number): boolean {
+  const from = beijingYear(startMs)
+  const to = beijingYear(endMs)
+  for (let year = from; year <= to; year += 1) {
+    if (!calendarKnownForYear(year)) return false
+  }
+  return true
+}
+
+/**
+ * Start of the most recent transition into a valley period.
+ *
+ * Valley periods start at the end of a peak window (12:00 / 18:00 on a peak day)
+ * and run until the next peak window starts; they may span nights, weekends and
+ * consecutive public holidays, so they are not reset at midnight.
+ */
+function lastValleyStartMs(now: number, secOfDay: number, dayStart: number): number {
+  if (isPeakDay(now)) {
+    if (secOfDay >= 18 * 3600) return dayStart + 18 * 3600 * 1000
+    if (secOfDay >= 12 * 3600) return dayStart + 12 * 3600 * 1000
+  }
+  // Before the first peak window of today: the valley started at 18:00 of the
+  // most recent peak day before today.
+  for (let offset = 1; offset <= 400; offset += 1) {
+    const day = dayStart - offset * DAY_MS
+    if (isPeakDay(day)) return day + 18 * 3600 * 1000
+  }
+  return dayStart
+}
+
+/** Start of the next transition into a peak period. */
+function nextPeakStartMs(now: number, secOfDay: number, dayStart: number): number {
+  if (isPeakDay(now)) {
+    for (const w of PEAK_WINDOWS) {
+      if (secOfDay < w.start) return dayStart + w.start * 1000
+    }
+  }
+  for (let offset = 1; offset <= 400; offset += 1) {
+    const day = dayStart + offset * DAY_MS
+    if (isPeakDay(day)) return day + PEAK_WINDOWS[0].start * 1000
+  }
+  // Defensive fallback: never return a negative/invalid boundary.
+  return dayStart + 7 * DAY_MS
+}
+
 /** Compute the peak/valley state for a wall-clock instant (epoch ms). */
 export function computeState(now: number): FengGuState {
   const secOfDay = beijingSecondsOfDay(now)
   const peak = PEAK_WINDOWS.find((w) => secOfDay >= w.start && secOfDay < w.end)
   const isValley = peak === undefined || !isPeakDay(now)
+  const dayStart = beijingDayStartMs(now)
 
-  let remainingSec: number
-  let targetMs = now
+  let periodStart: number
+  let periodEnd: number
   if (!isValley && peak !== undefined) {
-    remainingSec = peak.end - secOfDay
-    targetMs = now + remainingSec * 1000
+    periodStart = dayStart + peak.start * 1000
+    periodEnd = dayStart + peak.end * 1000
   } else {
-    remainingSec = nextPeakStartSeconds(now, secOfDay)
-    targetMs = now + remainingSec * 1000
+    periodStart = lastValleyStartMs(now, secOfDay, dayStart)
+    periodEnd = nextPeakStartMs(now, secOfDay, dayStart)
   }
 
-  const known = calendarKnownForYear(beijingYear(now)) && calendarKnownForYear(beijingYear(targetMs))
+  const remainingSec = Math.max(0, Math.ceil((periodEnd - now) / 1000))
+  const known = calendarKnownForYear(beijingYear(now)) && calendarKnownForYear(beijingYear(periodEnd))
+  const total = periodEnd - periodStart
+  const progressKnown = total > 0
+    && calendarKnownForRange(periodStart, periodEnd)
+    && periodStart >= CALENDAR_HORIZON_MS
+  const periodProgress = progressKnown
+    ? Math.min(100, Math.max(0, ((now - periodStart) / total) * 100))
+    : null
+
   const d = new Date(now + BEIJING_OFFSET_MS)
   return {
     isValley,
     remainingSec,
-    beijing: pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()),
+    beijing: pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + d.getUTCSeconds(),
     calendarKnown: known,
+    periodStart,
+    periodEnd,
+    periodProgress,
   }
-}
-
-/** Seconds from now until the next peak window starts (skips weekends/holidays). */
-function nextPeakStartSeconds(now: number, secOfDay: number): number {
-  const shifted = now + BEIJING_OFFSET_MS
-  const dayStart = Math.floor(shifted / DAY_MS) * DAY_MS
-  // Current day: later windows (09:00–12:00 / 14:00–18:00).
-  if (isPeakDay(now)) {
-    for (const w of PEAK_WINDOWS) {
-      if (secOfDay < w.start) return w.start - secOfDay
-    }
-  }
-  // Following days: first peak window of the next peak day.
-  for (let offset = 1; offset <= 400; offset += 1) {
-    const day = dayStart + offset * DAY_MS
-    if (isPeakDay(day)) {
-      return offset * DAY_SEC + PEAK_WINDOWS[0].start - secOfDay
-    }
-  }
-  // Defensive fallback: never return a negative/invalid countdown.
-  return 7 * DAY_SEC
 }
