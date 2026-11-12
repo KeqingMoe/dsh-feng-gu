@@ -3,8 +3,8 @@
  *
  * A compact real-time label in the composer statistics row and new-session
  * options, showing whether the current Beijing time falls into DeepSeek's peak (峰) or valley (谷) API
- * pricing window — 梁文峰 (peak) or 梁文谷 (valley) — with a live countdown
- * to the next switch and, on click, the full schedule plus the meme note.
+ * pricing window — 梁文峰 (peak) or 梁文谷 (valley) — with a live countdown to the next
+ * peak/valley switch that skips weekends and Chinese public holidays, plus the meme note.
  *
  * Beijing time is computed by shifting the epoch +8h and reading UTC parts,
  * so the badge is correct regardless of the browser's timezone.
@@ -14,65 +14,15 @@ import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { useAnchoredPosition, useDismissOnOutsidePointer } from '@deepseek-ai/dsh-client-ui-primitives'
 import { badgeCss } from './badge-css'
+import { computeState, formatHms } from './calendar'
+export { computeState, formatHms } from './calendar'
+export type { FengGuState } from './calendar'
 
 export const inject = ['slots']
 
 const PLUGIN_ID = 'dsh-feng-gu'
 
-/**
- * DeepSeek 峰谷定价（2026-08-17 生效）：高峰时段 = 北京时间每日 9:00–12:00、
- * 14:00–18:00，其余时间（含夜间、周末及节假日）为空闲时段，价格 = 高峰一半。
- */
-const BEIJING_OFFSET_MS = 8 * 3600 * 1000
-const DAY_SEC = 24 * 3600
-const PEAK_WINDOWS = [
-  { start: 9 * 3600, end: 12 * 3600 }, // 09:00–12:00
-  { start: 14 * 3600, end: 18 * 3600 }, // 14:00–18:00
-] as const
-
-export interface FengGuState {
-  /** True while Beijing time is inside an idle (valley) window. */
-  isValley: boolean
-  /** Seconds until the next peak/valley switch. */
-  remainingSec: number
-  /** Current Beijing time, HH:MM:SS. */
-  beijing: string
-}
-
-const pad = (n: number): string => String(n).padStart(2, '0')
-
-/** Format a seconds count as HH:MM:SS. */
-export function formatHms(total: number): string {
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  return `${pad(h)}:${pad(m)}:${pad(s)}`
-}
-
-/** Compute the peak/valley state for a wall-clock instant (epoch ms). */
-export function computeState(now: number): FengGuState {
-  const d = new Date(now + BEIJING_OFFSET_MS)
-  const h = d.getUTCHours()
-  const m = d.getUTCMinutes()
-  const s = d.getUTCSeconds()
-  const secOfDay = h * 3600 + m * 60 + s
-
-  const peak = PEAK_WINDOWS.find((w) => secOfDay >= w.start && secOfDay < w.end)
-  const isValley = peak === undefined
-
-  let remainingSec: number
-  if (peak !== undefined) {
-    remainingSec = peak.end - secOfDay // 当前高峰窗口结束
-  } else if (secOfDay < PEAK_WINDOWS[0].start) {
-    remainingSec = PEAK_WINDOWS[0].start - secOfDay // 00:00–09:00 → 今天 9:00
-  } else if (secOfDay < PEAK_WINDOWS[1].start) {
-    remainingSec = PEAK_WINDOWS[1].start - secOfDay // 12:00–14:00 → 今天 14:00
-  } else {
-    remainingSec = DAY_SEC + PEAK_WINDOWS[0].start - secOfDay // 18:00–24:00 → 次日 9:00
-  }
-
-  return { isValley, remainingSec, beijing: `${pad(h)}:${pad(m)}:${pad(s)}` }
-}
+/* 峰谷与假期日历逻辑见 ./calendar.ts（工作日、周末、法定节假日与下一次切换倒计时）。 */
 
 type BadgePlacement = 'top' | 'bottom'
 type BadgeVariant = 'dock' | 'hero'
@@ -152,7 +102,10 @@ function FengGuBadge({ side, variant }: { side: BadgePlacement; variant: BadgeVa
                 React.createElement('dd', null, formatHms(state.remainingSec))),
               React.createElement('div', { className: 'fg-row' },
                 React.createElement('dt', null, '高峰时段'),
-                React.createElement('dd', null, '09:00–12:00、14:00–18:00')),
+                React.createElement('dd', null, '工作日 09:00–12:00、14:00–18:00（周末/法定节假日全天低谷）')),
+              React.createElement('div', { className: 'fg-row' },
+                React.createElement('dt', null, '假期日历'),
+                React.createElement('dd', null, state.calendarKnown ? '已收录 2027 年法定节假日' : '未知年份，仅按工作日判定')),
             ),
           ),
           document.body,
