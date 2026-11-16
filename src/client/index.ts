@@ -12,7 +12,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { useAnchoredPosition, useDismissOnOutsidePointer } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useAnchoredPanelStyle, useDismissOnOutsidePointer } from './anchored'
 import { badgeCss } from './badge-css'
 
 export const inject = ['slots']
@@ -85,7 +85,7 @@ function FengGuBadge({ side, variant }: { side: BadgePlacement; variant: BadgeVa
   const rootRef = React.useRef<HTMLSpanElement>(null)
   const panelRef = React.useRef<HTMLDivElement>(null)
   const detailsId = React.useId()
-  const position = useAnchoredPosition({
+  const position = useAnchoredPanelStyle({
     open,
     anchorRef: rootRef,
     panelRef,

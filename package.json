@@ -1,6 +1,6 @@
 {
   "name": "dsh-feng-gu",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSeek Harness 整活插件：按 DeepSeek API 峰谷定价，实时显示现在是梁文峰（高峰）还是梁文谷（低谷），带切换倒计时",
   "repository": {
     "type": "git",
@@ -51,8 +51,8 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "react": "^18.2.0"
+    "@deepseek-ai/cordis": ">=4.0.0 <6.0.0",
+    "react": ">=18.0.0 <20.0.0"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/cordis": {

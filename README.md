@@ -18,7 +18,7 @@
 一条命令，从 GitHub 直接安装（无需克隆本仓库、无需任何额外配置）：
 
 ```sh
-dsh plugin --profile web add github:KeqingMoe/dsh-feng-gu#v0.1.0
+dsh plugin --profile web add github:KeqingMoe/dsh-feng-gu#v0.1.1
 ```
 
 > `--profile web` 对应你启动 Web 界面的那个 profile；从源码运行 dsh 时命令前缀
@@ -31,7 +31,16 @@ dsh plugin --profile web add github:KeqingMoe/dsh-feng-gu#v0.1.0
 dsh plugin --profile web remove dsh-feng-gu
 ```
 
-> `#v0.1.0` 是钉住的 tag，不会因后续推送而静默变化。
+> `#v0.1.1` 是钉住的 tag，不会因后续推送而静默变化。
+
+## 兼容性
+
+- 兼容 DSH 0.2.x Web profile（含 0.2.2-rc.3）。插件只用平台模块表里的 `react` / `react-dom`，
+  弹层定位与“点击外部关闭”都在包内实现，**不依赖 shell 私有的 `@deepseek-ai/dsh-client-ui-primitives`**：
+  0.2.2-rc.3 移除了其中的 `useAnchoredPosition`，旧版 `0.1.0` 因此会让会话输入栏报
+  `useAnchoredPosition is not a function` 并丢失徽标。
+- `peerDependencies` 采用宽松范围（`@deepseek-ai/cordis >=4.0.0 <6.0.0`、`react >=18.0.0 <20.0.0`），
+  服务端行不声明 `engines.dsh`，避免 DSH 的版本兼容闸门把插件停用。
 
 ## 它是怎么工作的
 
@@ -59,6 +68,7 @@ dsh-feng-gu/
 │   ├── index.ts            # node 半（Loader 行载体，空 apply）
 │   └── client/
 │       ├── index.ts        # 浏览器半：computeState / 徽章组件 / apply
+│       ├── anchored.ts     # 弹层定位 + 点击外部关闭（不依赖 shell primitives）
 │       └── badge-css.ts    # 样式（纯 CSS 字符串，跟随插件生命周期）
 └── scripts/smoke.mjs       # 无浏览器冒烟测试：注册、工厂物化、时段逻辑
 ```
