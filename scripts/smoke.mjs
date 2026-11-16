@@ -21,12 +21,16 @@ globalThis.window = {
 const reactStub = {
   createElement: (...args) => ({ kind: 'element', args }),
   useState: (init) => [typeof init === 'function' ? init() : init, () => {}],
+  useRef: () => ({ current: null }),
+  useId: () => 'r0',
   useEffect: () => {},
+  useLayoutEffect: () => {},
 }
 
 const requireStub = (id) => {
   if (id === 'react') return reactStub
   if (id === 'react/jsx-runtime') return { jsx: () => {} }
+  if (id === 'react-dom') return { createPortal: (children) => children }
   throw new Error(`unexpected require: ${id}`)
 }
 
